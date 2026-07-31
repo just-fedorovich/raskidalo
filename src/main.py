@@ -4,7 +4,8 @@ import sentry_sdk
 from aiogram import Bot, Dispatcher
 
 from src.config.settings import BOT_TOKEN, ENV, SENTRY_DSN
-from src.handlers.start import router
+from src.handlers.location import router as location_router
+from src.handlers.start import router as start_router
 
 if SENTRY_DSN:
     sentry_sdk.init(
@@ -18,7 +19,8 @@ if SENTRY_DSN:
 async def main() -> None:
     bot = Bot(BOT_TOKEN)
     dp = Dispatcher()
-    dp.include_router(router)
+    dp.include_router(start_router)
+    dp.include_router(location_router)
     await dp.start_polling(bot)
 
 

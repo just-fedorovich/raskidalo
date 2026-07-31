@@ -8,7 +8,10 @@ from aiogram.types import (
 )
 
 from src.db.base import SessionLocal
+from src.db.models import City, Location
 from src.services.analytics import track
+from src.services.cities import city_label
+from src.services.clock import time_ago
 from src.services.users import register_user
 
 router = Router()
@@ -28,7 +31,8 @@ MAIN_MENU_KB = InlineKeyboardMarkup(
     ]
 )
 
-STUB_CALLBACKS = {"set_city", "find_friend", "friends_in_city", "settings"}
+# set_city больше не заглушка — его обрабатывает src/handlers/location.py.
+STUB_CALLBACKS = {"find_friend", "friends_in_city", "settings"}
 
 
 @router.message(CommandStart())
@@ -43,6 +47,15 @@ async def cmd_start(message: Message) -> None:
         )
         if is_new:
             track(session, "user_registered", tg_user.id)
+        city_line = "Город пока не указан."
+        location = session.get(Location, tg_user.id)
+        if location is not None:
+            city = session.get(City, location.city_id)
+            if city is not None:
+                city_line = (
+                    f"Твой город: {city_label(session, city)}, "
+                    f"обновлено {time_ago(location.updated_at_utc)}."
+                )
 
     if is_new:
         name = tg_user.first_name or "друг"
@@ -53,7 +66,7 @@ async def cmd_start(message: Message) -> None:
         )
     else:
         await message.answer(
-            "С возвращением! Город пока не указан.",
+            f"С возвращением! {city_line}",
             reply_markup=MAIN_MENU_KB,
         )
 
