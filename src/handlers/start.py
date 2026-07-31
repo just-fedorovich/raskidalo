@@ -1,14 +1,10 @@
 ﻿from aiogram import F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import (
-    CallbackQuery,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    Message,
-)
+from aiogram.types import CallbackQuery, Message
 
 from src.db.base import SessionLocal
 from src.db.models import City, Location
+from src.keyboards import MAIN_MENU_KB, NEW_USER_KB
 from src.services.analytics import track
 from src.services.cities import city_label
 from src.services.clock import time_ago
@@ -16,22 +12,8 @@ from src.services.users import register_user
 
 router = Router()
 
-NEW_USER_KB = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(text="📍 Указать город", callback_data="set_city")],
-    ]
-)
-
-MAIN_MENU_KB = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(text="📍 Обновить город", callback_data="set_city")],
-        [InlineKeyboardButton(text="🔍 Найти друга", callback_data="find_friend")],
-        [InlineKeyboardButton(text="👥 Друзья в городе", callback_data="friends_in_city")],
-        [InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings")],
-    ]
-)
-
-# set_city больше не заглушка — его обрабатывает src/handlers/location.py.
+# Заглушки до Этапов 5–6: set_city живёт в location.py,
+# add_friend / my_friends — в friends.py.
 STUB_CALLBACKS = {"find_friend", "friends_in_city", "settings"}
 
 

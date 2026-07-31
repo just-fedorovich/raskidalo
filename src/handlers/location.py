@@ -10,19 +10,12 @@ from aiogram.types import (
 
 from src.db.base import SessionLocal
 from src.db.models import City
+from src.keyboards import MAIN_MENU_KB
 from src.services.analytics import track
 from src.services.cities import city_label, search_cities
 from src.services.locations import set_location
 
 router = Router()
-
-AFTER_SAVE_KB = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(text="🔍 Найти друга", callback_data="find_friend")],
-        [InlineKeyboardButton(text="👥 Друзья в городе", callback_data="friends_in_city")],
-        [InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings")],
-    ]
-)
 
 
 class SetCity(StatesGroup):
@@ -88,6 +81,6 @@ async def city_picked(callback: CallbackQuery, state: FSMContext) -> None:
     if callback.message is not None:
         await callback.message.answer(
             f"Сохранил! Твой город: {label}. Обновлено только что.",
-            reply_markup=AFTER_SAVE_KB,
+            reply_markup=MAIN_MENU_KB,
         )
     await callback.answer()
