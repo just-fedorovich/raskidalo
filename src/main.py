@@ -4,8 +4,10 @@ import sentry_sdk
 from aiogram import Bot, Dispatcher
 
 from src.config.settings import BOT_TOKEN, ENV, SENTRY_DSN
+from src.handlers.account import router as account_router
 from src.handlers.friends import router as friends_router
 from src.handlers.viewing import router as viewing_router
+from src.middlewares import ThrottleMiddleware
 from src.handlers.location import router as location_router
 from src.handlers.settings import router as settings_router
 from src.handlers.start import router as start_router
@@ -22,15 +24,19 @@ if SENTRY_DSN:
 async def main() -> None:
     bot = Bot(BOT_TOKEN)
     dp = Dispatcher()
+    dp.update.middleware(ThrottleMiddleware())
     dp.include_router(start_router)
     dp.include_router(location_router)
     dp.include_router(friends_router)
     dp.include_router(viewing_router)
     dp.include_router(settings_router)
+    dp.include_router(account_router)
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
 
 
