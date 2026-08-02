@@ -70,6 +70,23 @@ def _city_report(session, me_telegram_id: int, city: City) -> str:
     return "\n".join(lines)
 
 
+def _country_report(session, me_telegram_id: int, country) -> str:
+    views = friends_in_country(session, me_telegram_id, country.name_ru)
+    track(
+        session,
+        "city_lookup",
+        me_telegram_id,
+        {"scope": "country", "found": len(views)},
+    )
+    if not views:
+        return f"В стране {country.name_ru} пока никого из твоих друзей."
+    lines = [f"🌍 {country.name_ru} — друзей: {len(views)}"]
+    for v in views:
+        place = f", {v.city_name}" if v.city_name else ""
+        lines.append(f"• {_display(v)}{place} — ⏱ обновлено {v.updated_ago}")
+    return "\n".join(lines)
+
+
 # --- «Найти друга» (флоу 0.5.3) ---
 
 
@@ -150,6 +167,15 @@ async def lookup_typed(message: Message, state: FSMContext) -> None:
         return
     query = message.text or ""
     with SessionLocal.begin() as session:
+        # Фикс UX-1: сначала точное совпадение со страной, потом города —
+        # иначе нечёткий поиск городов перехватывает запрос
+        # («Израиль» -> город Измаил).
+        country = find_country(session, query)
+        if country is not None:
+            await state.clear()
+            text = _country_report(session, message.from_user.id, country)
+            await message.answer(text, reply_markup=MAIN_MENU_KB)
+            return
         cities = search_cities(session, query)
         if len(cities) == 1:
             await state.clear()
@@ -170,30 +196,6 @@ async def lookup_typed(message: Message, state: FSMContext) -> None:
                 "Уточни, какой именно город:",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
             )
-            return
-        country = find_country(session, query)
-        if country is not None:
-            await state.clear()
-            views = friends_in_country(
-                session, message.from_user.id, country.name_ru
-            )
-            track(
-                session,
-                "city_lookup",
-                message.from_user.id,
-                {"scope": "country", "found": len(views)},
-            )
-            if not views:
-                text = f"В стране {country.name_ru} пока никого из твоих друзей."
-            else:
-                lines = [f"🌍 {country.name_ru} — друзей: {len(views)}"]
-                for v in views:
-                    place = f", {v.city_name}" if v.city_name else ""
-                    lines.append(
-                        f"• {_display(v)}{place} — ⏱ обновлено {v.updated_ago}"
-                    )
-                text = "\n".join(lines)
-            await message.answer(text, reply_markup=MAIN_MENU_KB)
             return
     await message.answer(
         "Не нашёл ни города, ни страны с таким названием. Попробуй иначе."

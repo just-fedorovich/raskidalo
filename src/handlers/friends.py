@@ -9,6 +9,7 @@ from aiogram.types import (
 )
 
 from src.db.base import SessionLocal
+from src.db.models import User
 from src.keyboards import MAIN_MENU_KB
 from src.services.analytics import track
 from src.services.friends import (
@@ -17,6 +18,7 @@ from src.services.friends import (
     find_user_by_username,
     incoming_requests,
     list_friends,
+    remove_friend,
     send_request,
 )
 
@@ -136,6 +138,18 @@ async def my_friends(callback: CallbackQuery) -> None:
         lines = ["🤝 Твои друзья:"]
         if friends:
             lines += [f"• {_display(u.first_name, u.username)}" for u in friends]
+            lines.append("")
+            lines.append("Убрать кого-то из друзей — кнопкой ниже:"
+            )
+            for u in friends:
+                buttons.append(
+                    [
+                        InlineKeyboardButton(
+                            text=f"🗑 {_display(u.first_name, u.username)}",
+                            callback_data=f"fr_remove:{u.telegram_id}",
+                        )
+                    ]
+                )
         else:
             lines.append("пока никого — жми «➕ Добавить друга».")
         if incoming:
@@ -187,3 +201,54 @@ async def cb_decline(callback: CallbackQuery) -> None:
         if ok:
             track(session, "friend_request_declined", callback.from_user.id)
     await callback.answer("Заявка отклонена." if ok else "Заявка уже неактуальна.")
+
+
+# --- Удаление из друзей (Этап 6, флоу 0.5.7) ---
+# Важно: "fr_remove_yes:" не начинается с "fr_remove:" (дальше идёт "_",
+# а не ":"), поэтому обработчики не конфликтуют.
+
+
+@router.callback_query(F.data.startswith("fr_remove_yes:"))
+async def cb_remove_yes(callback: CallbackQuery) -> None:
+    other_id = int((callback.data or "fr_remove_yes:0").split(":", 1)[1])
+    with SessionLocal.begin() as session:
+        ok = remove_friend(session, callback.from_user.id, other_id)
+        if ok:
+            track(session, "friend_removed", callback.from_user.id)
+    await callback.answer("Удалено." if ok else "Вы уже не друзья.")
+    if ok and callback.message is not None:
+        await callback.message.answer(
+            "Готово: вы больше не друзья. Второй стороне уведомление "
+            "не отправляется.",
+            reply_markup=MAIN_MENU_KB,
+        )
+
+
+@router.callback_query(F.data.startswith("fr_remove:"))
+async def cb_remove_confirm(callback: CallbackQuery) -> None:
+    other_id = int((callback.data or "fr_remove:0").split(":", 1)[1])
+    with SessionLocal() as session:
+        other = session.get(User, other_id)
+        label = (
+            _display(other.first_name, other.username)
+            if other is not None
+            else "этого пользователя"
+        )
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Да, удалить",
+                    callback_data=f"fr_remove_yes:{other_id}",
+                ),
+                InlineKeyboardButton(text="❌ Отмена", callback_data="my_friends"),
+            ]
+        ]
+    )
+    if callback.message is not None:
+        await callback.message.answer(
+            f"Удалить {label} из друзей? Дружба разорвётся у обоих; "
+            "уведомление не придёт. Повторную заявку можно отправить позже.",
+            reply_markup=kb,
+        )
+    await callback.answer()

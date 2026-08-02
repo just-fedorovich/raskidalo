@@ -7,6 +7,7 @@ from src.config.settings import BOT_TOKEN, ENV, SENTRY_DSN
 from src.handlers.friends import router as friends_router
 from src.handlers.viewing import router as viewing_router
 from src.handlers.location import router as location_router
+from src.handlers.settings import router as settings_router
 from src.handlers.start import router as start_router
 
 if SENTRY_DSN:
@@ -25,9 +26,11 @@ async def main() -> None:
     dp.include_router(location_router)
     dp.include_router(friends_router)
     dp.include_router(viewing_router)
+    dp.include_router(settings_router)
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 

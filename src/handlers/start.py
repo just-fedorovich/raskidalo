@@ -14,7 +14,7 @@ router = Router()
 
 # Заглушки до Этапов 5–6: set_city живёт в location.py,
 # add_friend / my_friends — в friends.py.
-STUB_CALLBACKS = {"settings"}
+STUB_CALLBACKS: set = set()  # заглушек больше нет
 
 
 @router.message(CommandStart())
@@ -58,4 +58,5 @@ async def stub_buttons(callback: CallbackQuery) -> None:
     await callback.answer(
         "Эта кнопка заработает на следующих этапах 🛠", show_alert=True
     )
+
 

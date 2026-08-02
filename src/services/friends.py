@@ -109,3 +109,17 @@ def list_friends(session: Session, user_id: int) -> list[User]:
             )
         )
     )
+
+
+def remove_friend(session: Session, user_id: int, other_id: int) -> bool:
+    """Удалить из друзей (Этап 6, флоу 0.5.7): взаимный разрыв.
+
+    Строка дружбы удаляется совсем (hard delete, ADR-14) — повторную
+    заявку можно отправить снова. Вторую сторону намеренно не
+    уведомляем (privacy by default).
+    """
+    friendship = get_friendship(session, user_id, other_id)
+    if friendship is None or friendship.status != "mutual":
+        return False
+    session.delete(friendship)
+    return True
